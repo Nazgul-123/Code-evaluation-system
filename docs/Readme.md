@@ -27,6 +27,33 @@
 │── docs/                        # Документация
 │── code_evaluation.db       # База данных
 ```
+---
+
+## **Работа с Docker.**
+### Запуск контейнера:
+1. **Собрать образ**  
+   
+```sh
+   docker build -t aiogram-bot .
+```  
+
+2. **Запустить контейнер**  
+   
+```sh
+   docker run --rm -d --name bot aiogram-bot
+```  
+
+3. **Логи бота**  
+   
+```sh
+   docker logs -f bot
+```  
+
+4. **Остановка контейнера**  
+   
+```sh
+   docker stop bot
+```
 
 ---
 
