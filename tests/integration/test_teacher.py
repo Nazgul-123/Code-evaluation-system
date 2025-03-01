@@ -7,7 +7,13 @@ import pytest
 import pytest_asyncio
 import aiosqlite
 from domain.entity.teacher import Teacher
-from config import DB_PATH
+import os
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения из .env
+load_dotenv()
+# Получаем значение переменной окружения
+DB_PATH = os.getenv("DB_PATH")
 
 @pytest_asyncio.fixture
 async def teacher_db():

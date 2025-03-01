@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 # Добавляем корневую директорию проекта в sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from main import evaluate_code, handle_code_submission, user_codes
+from bot.main import evaluate_code, handle_code_submission, user_codes
 
 @pytest.mark.asyncio
 @patch('main.evaluate_lab_work_with_static_analyzer', new_callable=AsyncMock)

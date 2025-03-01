@@ -7,7 +7,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 import pytest
 import pytest_asyncio
 from domain.entity.code import Code  # Импортируем класс Code
-from config import DB_PATH  # Импортируем конфигурационные данные
+import os
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения из .env
+load_dotenv()
+# Получаем значение переменной окружения
+DB_PATH = os.getenv("DB_PATH")
 
 @pytest_asyncio.fixture
 async def code_db():

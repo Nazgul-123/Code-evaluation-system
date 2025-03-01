@@ -1,6 +1,12 @@
 import aiosqlite
 import asyncio
-from config import DB_PATH
+import os
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения из .env
+load_dotenv()
+# Получаем значение переменной окружения
+DB_PATH = os.getenv("DB_PATH")
 
 class Code:
     def __init__(self, db_name=DB_PATH):
