@@ -11,12 +11,15 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    env:
-      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-      DB_PATH: ${{ secrets.DB_PATH }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Create .env file
+        run: |
+          echo "TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }}" >> .env
+          echo "DB_PATH=${{ secrets.DB_PATH }}" >> .env
+
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
