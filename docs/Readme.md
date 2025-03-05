@@ -47,29 +47,29 @@ github_service клонирует репозитории и отправляет
 
 report_generation получает результаты и формирует отчеты.
 
-### Запуск контейнера:
-1. **Собрать образ**  
+### Запуск микросервиса:
+1. **Собрать образ и запустить**  
    
 ```sh
-   docker build -t aiogram-bot .
+   docker-compose up -d --build
 ```  
 
-2. **Запустить контейнер**  
+2. **Остановка контейнеров**  
    
 ```sh
-   docker run --rm -d --name bot aiogram-bot
+   docker-compose down
 ```  
 
-3. **Логи бота**  
+3. **Удалить неактивные образы**  
    
 ```sh
-   docker logs -f bot
+   docker system prune -f
 ```  
 
-4. **Остановка контейнера**  
+4. **Просмотреть информацию по контейнерам**  
    
 ```sh
-   docker stop bot
+   docker ps
 ```
 
 ---

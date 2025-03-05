@@ -63,6 +63,22 @@ services:
       - report_service
       - analysis_service
 
+  test:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile
+    container_name: test_container
+    env_file:
+      - .env
+    networks:
+      - app_network
+    depends_on:
+      - rabbitmq
+      - github_service
+      - report_service
+      - analysis_service
+      - bot
+
 networks:
   app_network:
     driver: bridge

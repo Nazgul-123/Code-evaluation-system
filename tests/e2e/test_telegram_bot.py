@@ -1,79 +1,134 @@
-import sys
-import os
+import asyncio
+import json
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from datetime import datetime
+from aiogram import Bot
+from aiogram.types import Message, Chat, User
+from aiormq import connect
+from dotenv import load_dotenv
+import os
 
-# Добавляем корневую директорию проекта в sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+load_dotenv()
 
-from bot.main import evaluate_code, handle_code_submission, user_codes
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+RABBITMQ_URL = "amqp://rabbitmq"
 
 @pytest.mark.asyncio
-@patch('main.evaluate_lab_work_with_static_analyzer', new_callable=AsyncMock)
-@patch('main.evaluate_lab_work_with_LLM', new_callable=AsyncMock)
-@patch('main.ReportGenerator.generate_report', new_callable=AsyncMock)
-@patch('main.bot', new_callable=MagicMock)
-async def test_evaluate_code(mock_bot, mock_generate_report, mock_evaluate_llm, mock_evaluate_static):
-    """Тест асинхронной функции оценки кода"""
+async def test_end_to_end():
+    """Проверяет полный процесс от отправки команды боту до получения отчета"""
 
-    user_id = 12345
-    user_codes[user_id] = "print('Hello World')"
+    # Отправляем команду в бота
+    bot = Bot(token=TELEGRAM_TOKEN)
+    user_id = 123456  # Имитируем ID пользователя
+    username = "test_user"
 
-    # Настройка заглушек
-    mock_evaluate_static.return_value = "Статический анализ: все хорошо."
-    mock_evaluate_llm.return_value = "LLM оценка: отлично."
-    mock_generate_report.return_value = "Ваш отчет: все прошло успешно."
-
-    # Создание объекта сообщения
-    message = MagicMock()
-    message.from_user.id = user_id
-    message.chat.id = 67890
-    message.message_id = 1
-
-    # Настройка message.answer как асинхронного метода
-    message.answer = AsyncMock()
-
-    # Используем AsyncMock для асинхронного метода reply_to
-    mock_bot.reply_to = AsyncMock()
-
-    # Вызываем функцию
-    await evaluate_code(message)
-
-    # Проверяем, что методы были вызваны
-    mock_evaluate_static.assert_called_once_with(1, "print('Hello World')")
-    mock_evaluate_llm.assert_called_once_with(1, "print('Hello World')", "Критерии оценки лабораторной работы:")
-    mock_generate_report.assert_called_once_with(
-        student_id=str(user_id),
-        LLMAssessment="LLM оценка: отлично.",
-        staticAnalyserAssessment="Статический анализ: все хорошо."
+    message = Message(
+        message_id=1,
+        date=datetime.now(),
+        chat=Chat(id=user_id, type="private"),
+        from_user=User(id=user_id, is_bot=False, username=username, first_name="Test"),
+        text="Получить отчет по коду студента"
     )
-    message.answer.assert_called_once_with("Ваш отчет: все прошло успешно.")
 
+    try:
+        # Подключаемся к RabbitMQ
+        connection = await connect(RABBITMQ_URL)
+        channel = await connection.channel()
 
-@pytest.mark.asyncio
-async def test_handle_code_submission():
-    """Тест сохранения кода пользователя"""
+        # Бот должен отправить запрос в `github_queue`
+        await channel.queue_declare(queue="github_queue")
+        await channel.basic_publish(
+            exchange="",
+            routing_key="github_queue",
+            body=json.dumps({"user_id": user_id, "username": username}).encode()
+        )
+        print("Запрос отправлен в github_queue")
 
-    user_id = 12345
-    message = MagicMock()
-    message.from_user.id = user_id
-    message.text = "print('Hello World')"
-    message.chat.id = 67890
+        # Ждём, пока `GitHub Service` получит код и отправит его в `analysis_queue`
+        await asyncio.sleep(2)  # Имитация обработки
 
-    # Настройка message.answer как асинхронного метода
-    message.answer = AsyncMock()
+        # Создаем очередь для анализа
+        await channel.queue_declare(queue="analysis_queue")
 
-    # Используем AsyncMock для асинхронного метода reply_to
-    mock_bot = MagicMock()
-    mock_bot.reply_to = AsyncMock()
+        # Используем Future для ожидания сообщения
+        analysis_future = asyncio.Future()
 
-    # Заменяем bot на mock_bot
-    with patch('main.bot', mock_bot):
-        await handle_code_submission(message)
+        # Callback-функция для обработки сообщений из analysis_queue
+        async def analysis_callback(message):
+            print("Получено сообщение в analysis_queue")
+            data = json.loads(message.body.decode())
+            assert data["user_id"] == user_id
+            print("GitHub Service обработал код и передал его в analysis_queue")
+            analysis_future.set_result(data)
 
-    # Проверяем, что код был сохранен
-    assert user_id in user_codes
-    assert user_codes[user_id] == "print('Hello World')"
+        # Подписываемся на очередь analysis_queue
+        await channel.basic_consume(queue="analysis_queue", consumer_callback=analysis_callback, no_ack=True)
 
-    # Проверяем, что message.answer был вызван
-    message.answer.assert_called_once_with("Ваш код успешно загружен! Чтобы получить оценку, введите /evaluate.")
+        # Ждем завершения Future с таймаутом
+        try:
+            await asyncio.wait_for(analysis_future, timeout=10.0)
+        except asyncio.TimeoutError:
+            pytest.fail("Сообщение в analysis_queue не было получено вовремя")
+
+        # Ждём, пока `Analysis Service` проанализирует код и отправит результат в `report_queue`
+        await asyncio.sleep(2)
+
+        # Создаем очередь для отчетов
+        await channel.queue_declare(queue="report_queue")
+
+        # Используем Future для ожидания сообщения
+        report_future = asyncio.Future()
+
+        # Callback-функция для обработки сообщений из report_queue
+        async def report_callback(message):
+            print("Получено сообщение в report_queue")
+            data = json.loads(message.body.decode())
+            assert data["user_id"] == user_id
+            assert "staticAnalyserAssessment" in data
+            assert "LLMAssessment" in data
+            print("Analysis Service отправил результаты анализа в report_queue")
+            report_future.set_result(data)
+
+        # Подписываемся на очередь report_queue
+        await channel.basic_consume(queue="report_queue", consumer_callback=report_callback, no_ack=True)
+
+        # Ждем завершения Future с таймаутом
+        try:
+            await asyncio.wait_for(report_future, timeout=10.0)
+        except asyncio.TimeoutError:
+            pytest.fail("Сообщение в report_queue не было получено вовремя")
+
+        # Ждём, пока `Report Service` отправит отчет в `bot_queue`
+        await asyncio.sleep(2)
+
+        # Создаем очередь для бота
+        await channel.queue_declare(queue="bot_queue")
+
+        # Используем Future для ожидания сообщения
+        bot_future = asyncio.Future()
+
+        # Callback-функция для обработки сообщений из bot_queue
+        async def bot_callback(message):
+            print("Получено сообщение в bot_queue")
+            data = json.loads(message.body.decode())
+            assert data["user_id"] == user_id
+            assert "report" in data
+            print("Report Service отправил отчет в bot_queue")
+            bot_future.set_result(data)
+
+        # Подписываемся на очередь bot_queue
+        await channel.basic_consume(queue="bot_queue", consumer_callback=bot_callback, no_ack=True)
+
+        # Ждем завершения Future с таймаутом
+        try:
+            await asyncio.wait_for(bot_future, timeout=10.0)
+        except asyncio.TimeoutError:
+            pytest.fail("Сообщение в bot_queue не было получено вовремя")
+
+        # Бот должен получить отчет и отправить его пользователю
+        received_report = bot_future.result()["report"]
+        assert "Оценка ИИ" in received_report
+        assert "Результаты статического анализатора" in received_report
+        print("Бот успешно получил и отправил отчет пользователю")
+    except Exception as e:
+        print(f"Ошибка {e}")

@@ -7,7 +7,6 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 import os
 from dotenv import load_dotenv
 from aiormq.abc import DeliveredMessage
-from typing import Coroutine
 import json
 
 load_dotenv()
