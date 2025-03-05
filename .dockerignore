@@ -3,6 +3,6 @@ __pycache__/
 *.pyo
 *.db
 /venv
-/tests
+#/tests
 /docs
 .env
