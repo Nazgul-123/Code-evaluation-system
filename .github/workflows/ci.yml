@@ -29,8 +29,10 @@ jobs:
       - name: Run Flake8 (Linting)
         run: flake8 . || true
 
-      - name: Run Black (Formatting Check)
-        run: black --check --diff .
+      - name: Autoformat code
+        run: |
+          black .
+          git diff --exit-code || (echo "Форматирование изменило файлы! Запустите 'black .' локально и закоммитьте изменения."; exit 1)
 
       - name: Run Pylint (Code Quality)
         run: pylint $(git ls-files '*.py') --fail-under=5.0 || true
