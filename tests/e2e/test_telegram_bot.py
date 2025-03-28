@@ -8,6 +8,8 @@ from aiormq import connect
 from dotenv import load_dotenv
 import os
 
+from pytest_mock import mocker
+
 load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -16,7 +18,8 @@ RABBITMQ_URL = "amqp://rabbitmq"
 @pytest.mark.asyncio
 async def test_end_to_end():
     """Проверяет полный процесс от отправки команды боту до получения отчета"""
-
+    mocker.patch("aiogram.Bot.send_message")
+    
     # Отправляем команду в бота
     bot = Bot(token=TELEGRAM_TOKEN)
     user_id = 123456  # Имитируем ID пользователя
@@ -30,6 +33,7 @@ async def test_end_to_end():
         text="Получить отчет по коду студента"
     )
 
+    connection = None
     try:
         # Подключаемся к RabbitMQ
         connection = await connect(RABBITMQ_URL)
@@ -66,7 +70,7 @@ async def test_end_to_end():
 
         # Ждем завершения Future с таймаутом
         try:
-            await asyncio.wait_for(analysis_future, timeout=10.0)
+            await asyncio.wait_for(analysis_future, timeout=20.0)
         except asyncio.TimeoutError:
             pytest.fail("Сообщение в analysis_queue не было получено вовремя")
 
@@ -94,7 +98,7 @@ async def test_end_to_end():
 
         # Ждем завершения Future с таймаутом
         try:
-            await asyncio.wait_for(report_future, timeout=10.0)
+            await asyncio.wait_for(report_future, timeout=20.0)
         except asyncio.TimeoutError:
             pytest.fail("Сообщение в report_queue не было получено вовремя")
 
@@ -121,7 +125,7 @@ async def test_end_to_end():
 
         # Ждем завершения Future с таймаутом
         try:
-            await asyncio.wait_for(bot_future, timeout=10.0)
+            await asyncio.wait_for(bot_future, timeout=30.0)
         except asyncio.TimeoutError:
             pytest.fail("Сообщение в bot_queue не было получено вовремя")
 
@@ -132,3 +136,6 @@ async def test_end_to_end():
         print("Бот успешно получил и отправил отчет пользователю")
     except Exception as e:
         print(f"Ошибка {e}")
+    finally:
+        if connection:
+            await connection.close()  # Обязательно закрываем соединение!

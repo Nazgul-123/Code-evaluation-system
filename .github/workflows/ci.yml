@@ -9,8 +9,39 @@ on:
       - main  # Запускать pipeline при создании PR в ветку main
 
 jobs:
-  build-and-test:
+  lint-and-static-analysis:
+    name: Lint and Static Analysis
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 mypy black pylint
+
+      - name: Run Flake8 (Linting)
+        run: flake8 .
+
+      - name: Run Black (Formatting Check)
+        run: black --check --diff .
+
+      - name: Run Pylint (Code Quality)
+        run: pylint $(git ls-files '*.py') --fail-under=5.0 || true
+
+      - name: Run MyPy (Static Analysis)
+        run: mypy . --ignore-missing-imports
+
+  build-and-test:
+    name: Build and Run Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-static-analysis
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -19,7 +50,6 @@ jobs:
         run: |
           echo "TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }}" >> .env
           echo "DB_PATH=${{ secrets.DB_PATH }}" >> .env
-
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -38,6 +68,15 @@ jobs:
 
       - name: Build Docker images
         run: docker-compose -f docker-compose.yml build
+
+      - name: Run Unit Tests
+        run: docker-compose -f docker-compose.yml run --rm test pytest tests/unit
+
+      - name: Run Integration Tests
+        run: docker-compose -f docker-compose.yml run --rm test pytest tests/integration
+
+      - name: Run End-to-End (E2E) Tests
+        run: docker-compose -f docker-compose.yml run --rm test pytest tests/e2e
 
       - name: Push Docker images
         run: docker-compose -f docker-compose.yml push

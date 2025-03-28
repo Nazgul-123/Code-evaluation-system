@@ -1,23 +1,36 @@
 Структура проекта
 ```
 /project-root
-│── main.py                     # Точка входа, запуск чат-бот aiogram
+│── .github/                  
+│   │── workflows/                 
+│   │   │── ci.yaml    # Директория для работы с форками студентов
+│── bot/    
+│   │── main.py                     # Точка входа, запуск чат-бот aiogram
+│   │── Dockerfile                     
+│   │── code_evaluation.db                     # База данных
 │── requirements.txt             # Зависимости Python
 │── config.py                     # Конфигурационные файлы
 │── domain/                  
-│   │── aggregate/                 
-│   │   │── cloned_repos    # Директория для работы с форками студентов
-│   │   │── github_service.py    # Работа с GitHub
-│   │   │── report_generation.py  # Генерация отчетов
+│   │── aggregate/        
+│   │   │── github_service/    # Работа с GitHub         
+│   │   │   │── cloned_repos    # Директория для работы с форками студентов
+│   │   │   │── Dockerfile    
+│   │   │   │── github_service.py    # Скачивание работ с гх и их обработка
+│   │   │── report_service/    # Генерация отчета         
+│   │   │   │── report_generation.py  
+│   │   │   │── Dockerfile    
 │   │── entity/  
-│   │   │── repository_settings.py    # Данные общего репозитория для определенной дисциплины
+│   │   │── assessment_criterion.py    # Критерии проверки 
 │   │   │── code.py    # Код студента с GitHub
 │   │   │── report.py    # Сгенерированный отчет
+│   │   │── repository_settings.py    # Данные общего репозитория для определенной дисциплины
 │   │   │── student.py    # Студент 
 │   │   │── teacher.py    # Преподаватель          
 │── models/                      # ML-модели для анализа кода, статические анализаторы
+│   │── analysis_service.py       # Обработка результатов оценки
 │   │── LLM.py       # Языковая модель для оценивавания по заданым критериям
 │   │── static_analyser.py       # Статический анализатор для получения метрик по коду
+│   │── Dockerfile                     
 │── tests/                       # Тесты
 │   │── e2e/   
 │   │── integration/    
