@@ -29,11 +29,11 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy  # Ждем готовности RabbitMQ
-    logging:
-      driver: "gelf"
-      options:
-        gelf-address: "udp://graylog:12201"
-        tag: "github_service"
+#    logging:
+#      driver: "gelf"
+#      options:
+#        gelf-address: "udp://graylog:12201"
+#        tag: "github_service"
 
   github_service_2:
     build:
@@ -48,11 +48,11 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    logging:
-      driver: "gelf"
-      options:
-        gelf-address: "udp://graylog:12201"
-        tag: "github_service"
+#    logging:
+#      driver: "gelf"
+#      options:
+#        gelf-address: "udp://graylog:12201"
+#        tag: "github_service"
 
   report_service:
     build:
@@ -65,11 +65,11 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    logging:
-      driver: "gelf"
-      options:
-        gelf-address: "udp://graylog:12201"
-        tag: "report_service"
+#    logging:
+#      driver: "gelf"
+#      options:
+#        gelf-address: "udp://graylog:12201"
+#        tag: "report_service"
 
   analysis_service:
     build:
@@ -82,11 +82,11 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    logging:
-      driver: "gelf"
-      options:
-        gelf-address: "udp://graylog:12201"
-        tag: "analysis_service"
+#    logging:
+#      driver: "gelf"
+#      options:
+#        gelf-address: "udp://graylog:12201"
+#        tag: "analysis_service"
 
   bot:
     build:
@@ -106,11 +106,11 @@ services:
       - github_service_2
       - report_service
       - analysis_service
-    logging:
-      driver: "gelf"
-      options:
-        gelf-address: "udp://graylog:12201"
-        tag: "bot"
+#    logging:
+#      driver: "gelf"
+#      options:
+#        gelf-address: "udp://graylog:12201"
+#        tag: "bot"
 
   test:
     build:
@@ -128,11 +128,11 @@ services:
       - report_service
       - analysis_service
       - bot
-    logging:
-      driver: "gelf"
-      options:
-        gelf-address: "udp://graylog:12201"
-        tag: "test"
+#    logging:
+#      driver: "gelf"
+#      options:
+#        gelf-address: "udp://graylog:12201"
+#        tag: "test"
 
   # Балансировщик нагрузки Nginx
   nginx_load_balancer:
@@ -148,36 +148,36 @@ services:
       - github_service_1
       - github_service_2
 
-  # MongoDB для Graylog
-  mongo:
-    image: mongo:5.0
-    container_name: mongo
-    networks:
-      - app_network
-
-  # Elasticsearch для Graylog
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
-    container_name: elasticsearch
-    environment:
-      - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-    networks:
-      - app_network
-
-  graylog:
-    image: graylog/graylog:4.3
-    container_name: graylog
-    env_file:
-      - .env
-    depends_on:
-      - mongo
-      - elasticsearch
-    ports:
-      - "9000:9000"      # Web-интерфейс Graylog
-      - "12201:12201/udp" # GELF UDP для логов
-    networks:
-      - app_network
+#  # MongoDB для Graylog
+#  mongo:
+#    image: mongo:5.0
+#    container_name: mongo
+#    networks:
+#      - app_network
+#
+#  # Elasticsearch для Graylog
+#  elasticsearch:
+#    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+#    container_name: elasticsearch
+#    environment:
+#      - discovery.type=single-node
+#      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+#    networks:
+#      - app_network
+#
+#  graylog:
+#    image: graylog/graylog:4.3
+#    container_name: graylog
+#    env_file:
+#      - .env
+#    depends_on:
+#      - mongo
+#      - elasticsearch
+#    ports:
+#      - "9000:9000"      # Web-интерфейс Graylog
+#      - "12201:12201/udp" # GELF UDP для логов
+#    networks:
+#      - app_network
 
 networks:
   app_network:
